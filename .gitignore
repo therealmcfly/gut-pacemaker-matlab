@@ -1,0 +1,61 @@
+gnore system-specific files
+.DS_Store
+Thumbs.db
+
+# Ignore MATLAB backup and autosave files
+*.asv
+*.m~ 
+*.fig~ 
+*.mdl~
+*.bak
+
+# Ignore binary and temporary files
+*.mex*
+*.obj
+*.o
+*.a
+*.so
+*.dll
+*.lib
+*.exe
+*.p
+*.pb
+
+# Ignore MATLAB cache and preferences
+matlab_crash_dump.*
+java_heapdump.*
+*.mlintcache
+*.prf
+*.log
+
+# Ignore Simulink-generated files
+slprj/
+sfprj/
+*_rtw/
+
+# Ignore project workspace files
+*.autosave
+*.mldatx
+*.slxc
+
+# Ignore user-specific files
+*.user.mat
+*.tmproj
+
+# Ignore general temporary files
+*.tmp
+*.temp
+~$*
+
+# Ignore application folders (e.g., MATLAB apps)
+*.mlappinstall
+*.mlapp
+
+# Ignore compiled app artifacts
+*.mlappinstall
+*.mlpkginstall
+
+# Ignore data files
+*.csv
+*.mat
+
