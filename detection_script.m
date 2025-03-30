@@ -6,8 +6,8 @@ close all
 % Initial settings
 bad_signal = 0; % if 0, uses good signal
 bad_dataname = 'exp_10_output';
-good_dataname = 'pig41exp2';
-channel = 2;
+good_dataname = 'pig37exp2';
+channel = 30;
 
 % Export data settings
 % data_save = 1;
@@ -21,6 +21,17 @@ channel = 2;
 % ed_data_save = 1;
 % actdpre_data_save = 1;
 % actd_data_save = 1;
+
+% Plot
+buffer_num = 2;
+
+initial_signal_plot = 1;
+lowpass_plot = 1;
+highpass_plot = 1;
+ar_plot=1;
+neo_maf_plot = 1;
+ed_plot=1;
+
 
 
 % ----------------------------------------------------------------------- %
@@ -130,6 +141,16 @@ while j < length(signal)
     tic;
 
     % % ------------------ Visualize the Original Buffer ------------------ %
+    if exist('initial_signal_plot', 'var') && initial_signal_plot > 0 && shift+1 == buffer_num
+        figure;
+        set(gcf, 'Position', [100 100 400 700]);
+        subplot(6,1,1); % First subplot for original signal
+        plot(buffer);
+        title(['Original Signal Before Low-Pass Filtering (Iteration ', num2str(i), ')']);
+        xlabel('Samples');
+        ylabel('Amplitude');
+        grid on;
+    end
     % figure;
     % subplot(2,1,1); % First subplot for original signal
     % plot(buffer);
@@ -156,8 +177,7 @@ while j < length(signal)
     lowpass_signal = lowpass(padded_buffer,3,sampling_f); % filtering
     lowpass_signal = lowpass_signal(61:end-60); % removing padding
 
-    % visualise_signal(lowpass_signal, sampling_f, "Low pass filtered signal");
-    % hfvt = fvtool(b, a, 'FrequencyScale', 'log'); % filter analysis tool
+   
 
     % % ------------------------- Low pass filter ------------------------- %
     % padded_buffer = ones(1, length(buffer) + 120) * buffer(1);
@@ -193,12 +213,15 @@ while j < length(signal)
 
 
     % % ------------------ Visualize the Low-Passed Signal ------------------ %
-    % subplot(2,1,2); % Second subplot for low-pass filtered signal
-    % plot(lowpass_signal, 'r'); % Red color to differentiate
-    % title(['Low-Pass Filtered Signal (Iteration ', num2str(i), ')']);
-    % xlabel('Samples');
-    % ylabel('Amplitude');
-    % grid on;
+    if exist('lowpass_plot', 'var') && lowpass_plot > 0 && shift == buffer_num
+        subplot(6,1,2); % Second subplot for low-pass filtered signal
+        plot(lowpass_signal, 'r'); % Red color to differentiate
+        title(['Low-Pass Filtered Signal (Iteration ', num2str(i), ')']);
+        xlabel('Samples');
+        ylabel('Amplitude');
+        grid on;
+    end
+   
         
     % Store filtered result in a new column
     lpf_result(:, col) = lowpass_signal(:); 
@@ -220,7 +243,16 @@ while j < length(signal)
     highpass_signal = conv(padded_lowpass, fir_high_pass); % filtering
     highpass_signal = highpass_signal(51:end - 50); % removing padding
 
-    % visualise_signal(highpass_signal, sampling_f, "High pass filtered signal");
+    % % ------------------ Visualize the High-Passed Signal ------------------ %
+    if exist('highpass_plot', 'var') && highpass_plot > 0 && shift == buffer_num
+        % visualise_signal(highpass_signal, sampling_f, "High pass filtered signal");
+        subplot(6,1,3); % Second subplot for low-pass filtered signal
+        plot(highpass_signal, 'r'); % Red color to differentiate
+        title(['High-Pass Filtered Signal (Iteration ', num2str(i), ')']);
+        xlabel('Samples');
+        ylabel('Amplitude');
+        grid on;
+    end
 
     % Store filtered result in a new column
     hpf_result(:, col) = highpass_signal(:); 
@@ -255,7 +287,18 @@ while j < length(signal)
         jj = ii + window_width; 
     end
 
-    % visualise_signal(artifacts_removed,sampling_f,"art rem"); 
+    % visualise_signal(artifacts_removed,sampling_f,"art rem");
+    if exist('ar_plot', 'var') && ar_plot > 0 && shift == buffer_num
+        % visualise_signal(artifacts_removed,sampling_f,"art rem");
+
+        subplot(6,1,4); % 4th subplot for Artifact Removed Signal
+        plot(artifacts_removed, 'r'); % Red color to differentiate
+        title(['Artifact Removed Signal (Iteration ', num2str(i), ')']);
+        xlabel('Samples');
+        ylabel('Amplitude');
+        grid on;
+    end
+
 
     % % Store artifact removed result in a new column
     ar_result(:, col) = artifacts_removed(:); 
@@ -266,10 +309,23 @@ while j < length(signal)
     % visualise_signal(test_neo, sampling_f, "NEO Signal");
     neo_result(:, col) = test_neo(:);
 
+    
+
     % ---------------------- Moving average filter ---------------------- %
 
     neo_filtered = moving_average_1s_window(test_neo, sampling_f);
-    % visualise_signal(neo_filtered, sampling_f, "Filtered NEO Signal");
+
+    if exist('neo_maf_plot', 'var') && neo_maf_plot > 0 && shift == buffer_num
+        % visualise_signal(neo_filtered, sampling_f, "Filtered NEO Signal");
+
+        subplot(6,1,5); % 4th subplot for Filtered NEO Signal
+        plot(neo_filtered, 'r'); % Red color to differentiate
+        title(['Filtered NEO Signal (Iteration ', num2str(i), ')']);
+        xlabel('Samples');
+        ylabel('Amplitude');
+        grid on;
+    end
+
     maf_result(:, col) = neo_filtered(:);
 
     % ------------------------------------------------------------------- %
@@ -309,7 +365,17 @@ while j < length(signal)
 
     ed_result(:,col) = f_t_sig(:);
 
-    % visualise_signal(f_t_sig, sampling_f, "Detection signal");
+    % 
+    if exist('ed_plot', 'var') && ed_plot > 0 && shift == buffer_num
+        % visualise_signal(f_t_sig, sampling_f, "Detection signal");
+
+        subplot(6,1,6); % 4th subplot for Filtered NEO Signal
+        plot(f_t_sig, 'r'); % Red color to differentiate
+        title(['Edge Detection Signal (Iteration ', num2str(i), ')']);
+        xlabel('Samples');
+        ylabel('Amplitude');
+        grid on;
+    end
 
     % ------------------------------------------------------------------- %
     %                        ACTIVATION DETECTION                         %
