@@ -7,7 +7,7 @@ close all
 bad_signal = 0; % if 0, uses good signal
 bad_dataname = 'exp_10_output';
 good_dataname = 'pig37exp2';
-channel = 30;
+channel = 5;
 
 % Export data settings
 % data_save = 1;
@@ -23,10 +23,10 @@ channel = 30;
 % actd_data_save = 1;
 
 % Plot
-buffer_num = 2;
+buffer_num = 3;
 
 initial_signal_plot = 1;
-lowpass_plot = 1;
+lowpass_plot = 1; 
 highpass_plot = 1;
 ar_plot=1;
 neo_maf_plot = 1;
