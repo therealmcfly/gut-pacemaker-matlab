@@ -3,10 +3,11 @@ clear
 clc
 close all
 
+DATASET_SIMULINK=1;
+
 % Initial settings
-use_bad_signal_data = 0; % if 0, uses good signal
-bad_dataname = 'exp_16_output';
-good_dataname = 'pig37exp2';
+% bad_dataname = 'exp_16_output';
+good_dataname = 'pig41exp2';
 channel = 1;
 
 MOD = 0;
@@ -46,7 +47,8 @@ plot_count = 1+lowpass_plot + highpass_plot + ar_plot + neo_maf_plot+ ed_plot;
 time = 0;
 lap = 0;
 
-if use_bad_signal_data > 0
+% if use_bad_signal_data > 0
+if exist('bad_dataname', 'var')
     % -- Bad signal -- %
     dataname = bad_dataname;
     importfile([dataname, '.mat']);
@@ -83,7 +85,8 @@ if use_bad_signal_data > 0
         writematrix(ds_signal, ver_ds_filename);
         disp(['Downsampled signal saved as: ', ver_ds_filename]);
     end
-else 
+    
+elseif exist('good_dataname', 'var')
     % -- Good signal -- %
     dataname = good_dataname;
     importfile([dataname, '.mat']);
@@ -120,6 +123,38 @@ else
         disp(['Downsampled signal saved as: ', ver_ds_filename]);
     end
     signal = signal.';
+else
+    error("Error: Not specified good data or bad data.")
+end
+
+if exist('DATASET_SIMULINK', 'var')
+    Ts = 1/sampling_f
+    filename = strjoin({dataname, '_', num2str(initial_sampling_f)}, '');
+
+    % Connect to TCP server
+    t = tcpclient("127.0.0.1", 8080);
+    
+    % Send filename (as uint8 char array)
+    write(t, uint8(filename), "uint8");
+    pause(0.1);  % Allow server to receive filename
+    write(t, uint8(sampling_f), "int32");
+    pause(0.1);  % Allow server to receive filename
+    write(t, uint8(channel), "int32");
+    pause(0.1);  % Allow server to receive filename
+
+    % Send data at ~32 Hz
+    for i = 1:length(signal)
+    % for i = 1:100  % or use num_samples
+        tic;
+        write(t, signal(i), "double");
+        while toc < Ts
+            % active wait (spins CPU but tighter timing)
+        end
+    end
+
+    % Clean up
+    clear t;
+    return;
 end
 
 threshold = 500;
