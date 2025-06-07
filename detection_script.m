@@ -5,9 +5,12 @@ close all
 
 DATASET_SIMULINK=1;
 
+% BOARD_CONNECT=1;
+board_ip = "192.168.137.223";
+
 % Initial settings
-% bad_dataname = 'exp_16_output';
-good_dataname = 'pig41exp2';
+bad_dataname = 'exp_16_output';
+% good_dataname = 'pig41exp2';
 channel = 1;
 
 MOD = 0;
@@ -132,9 +135,14 @@ if exist('DATASET_SIMULINK', 'var')
     filename = strjoin({dataname, '_', num2str(initial_sampling_f)}, '');
 
     % Connect to TCP server
-    t = tcpclient("127.0.0.1", 8080);
+    if exist('BOARD_CONNECT', 'var')
+        client = tcpclient(board_ip, 8080);
+    else
+        client = tcpclient("127.0.0.1", 8080);
+    end
     
-    % Send filename (as uint8 char array)
+    
+    Send filename (as uint8 char array)
     write(t, uint8(filename), "uint8");
     pause(0.1);  % Allow server to receive filename
     write(t, uint8(sampling_f), "int32");
@@ -146,14 +154,14 @@ if exist('DATASET_SIMULINK', 'var')
     for i = 1:length(signal)
     % for i = 1:100  % or use num_samples
         tic;
-        write(t, signal(i), "double");
+        write(client, signal(i), "double");
         while toc < Ts
             % active wait (spins CPU but tighter timing)
         end
     end
 
     % Clean up
-    clear t;
+    clear client;
     return;
 end
 
