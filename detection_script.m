@@ -9,17 +9,25 @@ close all
 board_ip = "192.168.137.223";
 
 % Initial settings
-% bad_dataname = 'exp_16_output';
-good_dataname = 'pig41exp2';
-channel = 1;
+bad_dataname = 'exp_16_output';
+% good_dataname = 'pig41exp2';
+channel = 2;
 
 ar_threshold = 500;
-close_prox_act_remove_threshold = 500;
 buffer_size = 1000;
 buffer_offset = buffer_size/2;
 % buffer_offset = 100;
+close_prox_act_remove_threshold = 500;
 
+if exist("bad_dataname", "var")
+    close_prox_act_remove_threshold = 500;
+elseif exist("good_dataname", "var")
+    close_prox_act_remove_threshold = 400;
+end
 
+% close_prox_act_remove_threshold = 500; % override threshold
+ed_scalar_val = 59;
+actd_scalar_val = 5.9;
 
 % MODIFICATION = 0;
 
@@ -37,13 +45,14 @@ buffer_offset = buffer_size/2;
 % actd_data_save = 1;
 
 % Plot
-% whole_signal_plot = 1;
+whole_signal_plot = 1;
 buffer_plot = 1;
-buffer_num = 5;
+buffer_num = [1,3];
 
 lowpass_plot = 1; 
 highpass_plot = 1;
 ar_plot = 1;
+neo_transform_plot = 1;
 neo_maf_plot = 1;
 ed_plot = 1;
 
@@ -233,10 +242,10 @@ while j < length(signal)
     tic;
 
     % % ------------------ Visualize the Original Buffer ------------------ %
-    if exist('buffer_plot', 'var') && buffer_plot > 0 && shift+1 == buffer_num
+    if exist('buffer_plot', 'var') && buffer_plot > 0 && (shift+1 >= buffer_num(1) && shift+1 <= buffer_num(2))
         figure;
         set(gcf, 'Position', [100 100 400 700]);
-        subplot(6,1,1); % First subplot for original signal
+        subplot(7,1,1); % First subplot for original signal
         plot(buffer);
         title(['Original Signal Before Low-Pass Filtering (Iteration ', num2str(i), ')']);
         xlabel('Samples');
@@ -305,8 +314,8 @@ while j < length(signal)
 
 
     % % ------------------ Visualize the Low-Passed Signal ------------------ %
-    if exist('buffer_plot', 'var') && buffer_plot > 0 && exist('lowpass_plot', 'var') && lowpass_plot > 0 && shift+1 == buffer_num
-        subplot(6,1,2); % Second subplot for low-pass filtered signal
+    if exist('buffer_plot', 'var') && buffer_plot > 0 && exist('lowpass_plot', 'var') && lowpass_plot > 0 && (shift+1 >= buffer_num(1) && shift+1 <= buffer_num(2))
+        subplot(7,1,2); % Second subplot for low-pass filtered signal
         plot(lowpass_signal, 'r'); % Red color to differentiate
         title(['Low-Pass Filtered Signal (Iteration ', num2str(i), ')']);
         xlabel('Samples');
@@ -344,9 +353,9 @@ while j < length(signal)
     highpass_signal = highpass_signal(51:end - 50); % removing padding
 
     % % ------------------ Visualize the High-Passed Signal ------------------ %
-    if exist('buffer_plot', 'var') && buffer_plot > 0 && exist('highpass_plot', 'var') && highpass_plot > 0 && shift+1 == buffer_num
+    if exist('buffer_plot', 'var') && buffer_plot > 0 && exist('highpass_plot', 'var') && highpass_plot > 0 && (shift+1 >= buffer_num(1) && shift+1 <= buffer_num(2))
         % visualise_signal(highpass_signal, sampling_f, "High pass filtered signal");
-        subplot(6,1,3); % Second subplot for low-pass filtered signal
+        subplot(7,1,3); % Second subplot for low-pass filtered signal
         plot(highpass_signal, 'r'); % Red color to differentiate
         title(['High-Pass Filtered Signal (Iteration ', num2str(i), ')']);
         xlabel('Samples');
@@ -397,10 +406,10 @@ while j < length(signal)
     end
 
     % visualise_signal(artifacts_removed,sampling_f,"art rem");
-    if exist('buffer_plot', 'var') && buffer_plot > 0 && exist('ar_plot', 'var') && ar_plot > 0 && shift+1 == buffer_num
+    if exist('buffer_plot', 'var') && buffer_plot > 0 && exist('ar_plot', 'var') && ar_plot > 0 && (shift+1 >= buffer_num(1) && shift+1 <= buffer_num(2))
         % visualise_signal(artifacts_removed,sampling_f,"art rem");
 
-        subplot(6,1,4); % 4th subplot for Artifact Removed Signal
+        subplot(7,1,4); % 4th subplot for Artifact Removed Signal
         plot(artifacts_removed, 'r'); % Red color to differentiate
         title(['Artifact Removed Signal (Iteration ', num2str(i), ')']);
         xlabel('Samples');
@@ -426,16 +435,27 @@ while j < length(signal)
     test_neo = NEO_transform(artifacts_removed);
     % visualise_signal(test_neo, sampling_f, "NEO Signal");
     neo_result(:, col) = test_neo(:);
+
+    if exist('buffer_plot', 'var') && buffer_plot > 0 && exist('neo_transform_plot', 'var') && neo_maf_plot > 0 && (shift+1 >= buffer_num(1) && shift+1 <= buffer_num(2))
+        % visualise_signal(neo_filtered, sampling_f, "Filtered NEO Signal");
+
+        subplot(7,1,5); % 4th subplot for Filtered NEO Signal
+        plot(test_neo, 'r'); % Red color to differentiate
+        title(['NEO Transform Signal (Iteration ', num2str(i), ')']);
+        xlabel('Samples');
+        ylabel('Amplitude');
+        grid on;
+    end
      
 
     % ---------------------- Moving average filter ---------------------- %
 
     neo_filtered = moving_average_1s_window(test_neo, sampling_f);
 
-    if exist('buffer_plot', 'var') && buffer_plot > 0 && exist('neo_maf_plot', 'var') && neo_maf_plot > 0 && shift+1 == buffer_num
+    if exist('buffer_plot', 'var') && buffer_plot > 0 && exist('neo_maf_plot', 'var') && neo_maf_plot > 0 && (shift+1 >= buffer_num(1) && shift+1 <= buffer_num(2))
         % visualise_signal(neo_filtered, sampling_f, "Filtered NEO Signal");
 
-        subplot(6,1,5); % 4th subplot for Filtered NEO Signal
+        subplot(7,1,6); % 4th subplot for Filtered NEO Signal
         plot(neo_filtered, 'r'); % Red color to differentiate
         title(['Filtered NEO Signal (Iteration ', num2str(i), ')']);
         xlabel('Samples');
@@ -482,11 +502,7 @@ while j < length(signal)
     f_t_sig = f_t_sig.^2;
 
     % remove noise with mean of the signal * scalar value as baseline 
-    if exist("MODIFICATION", "var")
-        f_t_sig_base = mean(f_t_sig) * 5.9;
-    else
-        f_t_sig_base = mean(f_t_sig) * 59;
-    end
+    f_t_sig_base = mean(f_t_sig) * ed_scalar_val;
     
     % f_t_sig_base = mean(f_t_sig);
     for z = 1:length(f_t_sig)
@@ -495,10 +511,8 @@ while j < length(signal)
         end
     end
     
-    if exist('buffer_plot', 'var') && buffer_plot > 0 && exist('ed_plot', 'var') && ed_plot > 0 && shift+1 == buffer_num
-        
-
-        subplot(6,1,6); % 4th subplot for Filtered NEO Signal
+    if exist('buffer_plot', 'var') && buffer_plot > 0 && exist('ed_plot', 'var') && ed_plot > 0 && (shift+1 >= buffer_num(1) && shift+1 <= buffer_num(2))
+        subplot(7,1,7); % 4th subplot for Filtered NEO Signal
         plot(f_t_sig, 'r'); % Red color to differentiate
         title(['Edge Detection Signal (Iteration ', num2str(i), ')']);
         xlabel('Samples');
@@ -532,24 +546,13 @@ while j < length(signal)
 
     % threshold calculation * scale
     
-    if exist("MODIFICATION", "var")
-        mad = mean(f_t_sig) * 5.9;
-    else
-        mad = mean(f_t_sig) * 5.9;
-    end
+    mad = mean(f_t_sig) * actd_scalar_val;
 
     % finding where detection signal > threshold
 
     offset = buffer_offset * shift;
     find_result = find(f_t_sig > mad);
     loc = find_result + offset;
-
-
-    if exist('ed_plot', 'var') && ed_plot > 0 && shift+1 == buffer_num
-        
-
-        aaa = 1+1;
-    end
 
     if ~isempty(loc)
         fprintf("Appending %d activation(s): %s\n", length(loc), mat2str(loc));
@@ -616,14 +619,11 @@ end
 
 % remove points in close proximity of each other (max 1 activation per window)
 for i = 1:length(locs)
-    if exist("MODIFICATION", "var")
-        locs(find(diff(locs) < buffer_size/3, 1) + 1) = [];
-    else
-        activation_prox_arr = diff(locs);
-        close_act_idx = find(activation_prox_arr < close_prox_act_remove_threshold, 1);
-        if ~isempty(close_act_idx)
-            locs(close_act_idx + 1) = [];
-        end
+    activation_prox_arr = diff(locs);
+    close_act_idx = find(activation_prox_arr < close_prox_act_remove_threshold, 1);
+    if ~isempty(close_act_idx)
+        fprintf("Removing close prox activation : %d\n", locs(close_act_idx + 1));
+        locs(close_act_idx + 1) = [];
     end
 
 end
