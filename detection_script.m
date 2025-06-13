@@ -3,17 +3,25 @@ clear
 clc
 close all
 
-DATASET_SIMULINK=1;
+% REALTIME_DATASET_MODE=1;
 
 % BOARD_CONNECT=1;
 board_ip = "192.168.137.223";
 
 % Initial settings
-bad_dataname = 'exp_16_output';
-% good_dataname = 'pig41exp2';
+% bad_dataname = 'exp_16_output';
+good_dataname = 'pig41exp2';
 channel = 1;
 
-MOD = 0;
+ar_threshold = 500;
+close_prox_act_remove_threshold = 500;
+buffer_size = 1000;
+buffer_offset = buffer_size/2;
+% buffer_offset = 100;
+
+
+
+% MODIFICATION = 0;
 
 % Export data settings
 % data_save = 1;
@@ -29,17 +37,32 @@ MOD = 0;
 % actd_data_save = 1;
 
 % Plot
-whole_signal_plot = 1;
-% buffer_plot = 1;
+% whole_signal_plot = 1;
+buffer_plot = 1;
 buffer_num = 5;
 
-lowpass_plot = 0; 
-highpass_plot = 0;
-ar_plot=0;
-neo_maf_plot = 0;
+lowpass_plot = 1; 
+highpass_plot = 1;
+ar_plot = 1;
+neo_maf_plot = 1;
 ed_plot = 1;
 
-plot_count = 1+lowpass_plot + highpass_plot + ar_plot + neo_maf_plot+ ed_plot;
+plot_count = 1;
+if exist("lowpass_plot", "var")
+    plot_count = plot_count + 1;
+end
+if exist("highpass_plot", "var")
+    plot_count = plot_count + 1;
+end
+if exist("ar_plot", "var")
+    plot_count = plot_count + 1;
+end
+if exist("neo_maf_plot", "var")
+    plot_count = plot_count + 1;
+end
+if exist("ed_plot", "var")
+    plot_count = plot_count + 1;
+end
 
 % ----------------------------------------------------------------------- %
 %                                CONFIG                                   %
@@ -97,7 +120,7 @@ elseif exist('good_dataname', 'var')
     sampling_f = 30;
     channel_select = channel;
     signal = sigRawSelect(channel_select,1:end);
-    data_struct = sigRawSelect.'
+    data_struct = sigRawSelect.';
     % % visualise_signal(signal,sampling_f,"Original Data At 512 Hz");
     % % Saving verify file for C program 
     % verify_filename = strjoin({dataname, '_', num2str(initial_sampling_f), '.csv'}, '');
@@ -130,43 +153,58 @@ else
     error("Error: Not specified good data or bad data.")
 end
 
-if exist('DATASET_SIMULINK', 'var')
+if exist('REALTIME_DATASET_MODE', 'var')
     Ts = 1/sampling_f
     filename = strjoin({dataname, '_', num2str(initial_sampling_f)}, '');
+    mode = REALTIME_DATASET_MODE;
 
     % Connect to TCP server
-    if exist('BOARD_CONNECT', 'var')
-        client = tcpclient(board_ip, 8080);
-    else
-        client = tcpclient("127.0.0.1", 8080);
-    end
-    
-    
-    Send filename (as uint8 char array)
-    write(t, uint8(filename), "uint8");
-    pause(0.1);  % Allow server to receive filename
-    write(t, uint8(sampling_f), "int32");
-    pause(0.1);  % Allow server to receive filename
-    write(t, uint8(channel), "int32");
-    pause(0.1);  % Allow server to receive filename
+    % if exist('BOARD_CONNECT', 'var')
+    %     client = tcpclient(board_ip, 8081);
+    % else
+    %     client = tcpclient("127.0.0.1", 8081);
+    % end
+    % client = tcpclient("127.0.0.1", 8081);
+    % 
+    %  %Send mode identifier (1 byte)
+    % write(client, uint8(REALTIME_DATASET_MODE), "uint8");
+    % pause(0.1);  % Allow server time to process mode byte
+    % 
+    % % Send filename as uint8 character array
+    % write(client, uint8(filename), "uint8");
+    % pause(0.05);  % Allow server time to process filename
+    % 
+    % % Send sampling frequency (4 bytes)
+    % write(client, int32(sampling_f), "int32");
+    % pause(0.05);  % Allow server time to process sampling frequency
+    % 
+    % % Send channel number (4 bytes)
+    % write(client, int32(channel), "int32");
+    % pause(0.05);  % Allow server time to process channel number
+    % 
+    % fprintf("Waiting for go signal from server...\n");
+    %   % Wait until relay server sends a start signal (1 byte, uint8)
+    % while client.NumBytesAvailable < 1
+    %     pause(0.01);  % prevent busy-waiting
+    % end
+    % 
+    % start_signal = read(client, 1, "uint8");
+    % 
+    % if start_signal == 1
+    %     disp('Start signal received. Beginning data transmission.');
+    % else
+    %     warning('Unexpected start signal received: %d', start_signal);
+    % end
 
-    % Send data at ~32 Hz
-    for i = 1:length(signal)
-    % for i = 1:100  % or use num_samples
-        tic;
-        write(client, signal(i), "double");
-        while toc < Ts
-            % active wait (spins CPU but tighter timing)
-        end
-    end
+    relay_server(mode, filename, sampling_f, channel, signal);
 
     % Clean up
-    clear client;
+    fprintf("Finished sending signal from Realtime Dataset Mode. Exiting program.");
+    % clear client;
     return;
 end
 
-threshold = 500;
-buffer_size = 1000;
+
 locs = [];
 i = 1;
 j = i + buffer_size;
@@ -284,7 +322,7 @@ while j < length(signal)
         segment = lowpass_signal(1:buffer_size);
         lpf_signal = segment(:);  % Ensure column vector
     else
-        segment = lowpass_signal((buffer_size / 2) + 1 : buffer_size);
+        segment = lowpass_signal((buffer_size - buffer_offset) + 1 : buffer_size);
         lpf_signal = [lpf_signal; segment(:)];
     end
 
@@ -324,7 +362,7 @@ while j < length(signal)
         segment = hpf_seg(1:buffer_size);
         hpf_signal = segment(:);  % Ensure column vector
     else
-        segment = hpf_seg((buffer_size / 2) + 1 : buffer_size);
+        segment = hpf_seg((buffer_size - buffer_offset) + 1 : buffer_size);
         hpf_signal = [hpf_signal; segment(:)];
     end
 
@@ -339,7 +377,7 @@ while j < length(signal)
 
     while jj < length(artifacts_removed)
         window = artifacts_removed(ii:jj);
-        loc = artifact_detect(window, threshold);
+        loc = artifact_detect(window, ar_threshold);
 
         if (isnan(loc) ~= 1)
         % artifact detected
@@ -379,7 +417,7 @@ while j < length(signal)
         segment = ar_seg(1:buffer_size);
         ar_signal = segment(:);  % Ensure column vector
     else
-        segment = ar_seg((buffer_size / 2) + 1 : buffer_size);
+        segment = ar_seg((buffer_size - buffer_offset) + 1 : buffer_size);
         ar_signal = [ar_signal; segment(:)];
     end
 
@@ -412,7 +450,7 @@ while j < length(signal)
         segment = neo_seg(1:buffer_size);
         neo_signal = segment(:);  % Ensure column vector
     else
-        segment = neo_seg((buffer_size / 2) + 1 : buffer_size);
+        segment = neo_seg((buffer_size - buffer_offset) + 1 : buffer_size);
         neo_signal = [neo_signal; segment(:)];
     end
 
@@ -444,7 +482,7 @@ while j < length(signal)
     f_t_sig = f_t_sig.^2;
 
     % remove noise with mean of the signal * scalar value as baseline 
-    if(MOD == 1)
+    if exist("MODIFICATION", "var")
         f_t_sig_base = mean(f_t_sig) * 5.9;
     else
         f_t_sig_base = mean(f_t_sig) * 59;
@@ -475,7 +513,7 @@ while j < length(signal)
         segment = ed_seg(1:buffer_size);
         ed_signal = segment(:);  % Ensure column vector
     else
-        segment = ed_seg((buffer_size / 2) + 1 : buffer_size);
+        segment = ed_seg((buffer_size - buffer_offset) + 1 : buffer_size);
         ed_signal = [ed_signal; segment(:)];
     end
 
@@ -494,7 +532,7 @@ while j < length(signal)
 
     % threshold calculation * scale
     
-    if(MOD == 1)
+    if exist("MODIFICATION", "var")
         mad = mean(f_t_sig) * 5.9;
     else
         mad = mean(f_t_sig) * 5.9;
@@ -502,9 +540,9 @@ while j < length(signal)
 
     % finding where detection signal > threshold
 
-    aa = ((shift / 2) * buffer_size);
+    offset = buffer_offset * shift;
     find_result = find(f_t_sig > mad);
-    loc = find_result + aa;
+    loc = find_result + offset;
 
 
     if exist('ed_plot', 'var') && ed_plot > 0 && shift+1 == buffer_num
@@ -512,13 +550,18 @@ while j < length(signal)
 
         aaa = 1+1;
     end
+
+    if ~isempty(loc)
+        fprintf("Appending %d activation(s): %s\n", length(loc), mat2str(loc));
+    end
     
     % append to locs array
+    
     locs = [locs loc];
     
     % calculate window shift
     shift = shift + 1;  
-    i = i + buffer_size / 2;
+    i = i + buffer_offset;
     j = i + buffer_size;
     col = col + 1;
     
@@ -573,17 +616,25 @@ end
 
 % remove points in close proximity of each other (max 1 activation per window)
 for i = 1:length(locs)
-    if(MOD == 1)
+    if exist("MODIFICATION", "var")
         locs(find(diff(locs) < buffer_size/3, 1) + 1) = [];
     else
-        locs(find(diff(locs) < 500, 1) + 1) = [];
+        activation_prox_arr = diff(locs);
+        close_act_idx = find(activation_prox_arr < close_prox_act_remove_threshold, 1);
+        if ~isempty(close_act_idx)
+            locs(close_act_idx + 1) = [];
+        end
     end
 
 end
 
+
 % remove points past the window length
 for i = 1:length(locs)
+    fprintf("%d\n", locs(i));
     if locs(i) > length(signal)
+        % fprintf("%d\n", locs(i));
+        % fprintf("%d\n", length(signal));
         % locs(i:numel(locs)) = [];
         error('activation detection passed the window length');    
         break
@@ -625,7 +676,7 @@ if exist('whole_signal_plot', 'var')
         end
     end
 
-    if(highpass_plot > 0)
+    if exist("highpass_plot","var")
         curr_count = curr_count +1;
         subplot(plot_count,1,curr_count);
         plot(hpf_signal, 'r');
@@ -635,7 +686,7 @@ if exist('whole_signal_plot', 'var')
         end
     end
 
-    if(neo_maf_plot > 0)
+    if exist("ar_plot", "var" )
         curr_count = curr_count +1;
         subplot(plot_count,1,curr_count);
         plot(ar_signal, 'r');
@@ -645,7 +696,7 @@ if exist('whole_signal_plot', 'var')
         end
     end
     
-    if(neo_maf_plot > 0)
+    if exist("neo_maf_plot", "var")
         curr_count = curr_count +1;
         subplot(plot_count,1,curr_count);
         plot(neo_signal, 'r');
@@ -655,7 +706,7 @@ if exist('whole_signal_plot', 'var')
         end
     end
 
-    if(ed_plot > 0)
+    if exist("ed_plot", "var")
         curr_count = curr_count + 1;
         subplot(plot_count,1,curr_count);
         plot(ed_signal, 'r');
